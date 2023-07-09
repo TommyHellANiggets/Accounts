@@ -1,0 +1,281 @@
+import PyQt5.QtWidgets as QtWidgets
+import PyQt5.QtCore as QtCore
+import sys
+import mysql.connector
+
+
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("My App")
+        self.setStyleSheet("background-color: #1c1c1c;")
+
+        central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(central_widget)
+
+        layout = QtWidgets.QHBoxLayout()
+        central_widget.setLayout(layout)
+
+        left_widget = QtWidgets.QWidget()
+        left_widget.setFixedSize(200, 900)
+        left_widget.setStyleSheet("background-color: #3f3f3f; border: 1px solid black; border-radius: 10px;")
+        layout.addWidget(left_widget)
+
+        left_layout = QtWidgets.QVBoxLayout()
+        left_layout.setSpacing(5)
+        left_layout.setAlignment(QtCore.Qt.AlignTop)
+        left_widget.setLayout(left_layout)
+
+        home_button = QtWidgets.QPushButton("Главная")
+        home_button.setStyleSheet(
+            "background-color: white; color: black; font-size: 18px; padding: 10px; font-weight: bold;")
+        home_button.clicked.connect(self.show_home)
+        left_layout.addWidget(home_button)
+
+        settings_button = QtWidgets.QPushButton("Настройки")
+        settings_button.setStyleSheet(
+            "background-color: white; color: black; font-size: 18px; padding: 10px; font-weight: bold;")
+        settings_button.clicked.connect(self.show_settings)
+        left_layout.addWidget(settings_button)
+
+        operation_button = QtWidgets.QPushButton("Операция")
+        operation_button.setStyleSheet(
+            "background-color: white; color: black; font-size: 18px; padding: 10px; font-weight: bold;")
+        operation_button.clicked.connect(self.show_operation)
+        left_layout.addWidget(operation_button)
+
+        self.right_widget = QtWidgets.QStackedWidget()
+        self.right_widget.setFixedSize(980, 900)
+        self.right_widget.setStyleSheet("background-color: #3f3f3f; border: 1px solid black; border-radius: 10px;")
+        layout.addWidget(self.right_widget)
+
+        self.home_page = QtWidgets.QWidget()
+        self.right_widget.addWidget(self.home_page)
+
+        home_layout = QtWidgets.QVBoxLayout()
+        home_layout.setAlignment(QtCore.Qt.AlignTop)
+        self.home_page.setLayout(home_layout)
+
+        login_label = QtWidgets.QLabel("Логин")
+        login_label.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
+        home_layout.addWidget(login_label)
+
+        self.login_list = QtWidgets.QListWidget()
+        self.login_list.setStyleSheet("background-color: #3f3f3f; color: white; font-size: 18px; font-weight: bold;")
+        home_layout.addWidget(self.login_list)
+
+        add_button = QtWidgets.QPushButton("Добавить")
+        add_button.setStyleSheet(
+            "background-color: white; color: black; font-size: 18px; padding: 10px; font-weight: bold;")
+        add_button.clicked.connect(self.add_login)
+        home_layout.addWidget(add_button, alignment=QtCore.Qt.AlignRight)
+
+        self.settings_page = QtWidgets.QWidget()
+        self.right_widget.addWidget(self.settings_page)
+
+        settings_layout = QtWidgets.QVBoxLayout()
+        settings_layout.setAlignment(QtCore.Qt.AlignTop)
+        self.settings_page.setLayout(settings_layout)
+
+        self.table = QtWidgets.QTableWidget()
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["Логин", "Пароль", "EMail", "R-Code"])
+        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.table.setStyleSheet(
+            "background-color: #3f3f3f; color: white; font-size: 18px; font-weight: bold; gridline-color: #3f3f3f;")
+        self.table.verticalHeader().setVisible(False)
+        settings_layout.addWidget(self.table)
+
+        button_layout = QtWidgets.QHBoxLayout()
+        settings_layout.addLayout(button_layout)
+
+        delete_button = QtWidgets.QPushButton("Удалить")
+        delete_button.setStyleSheet(
+            "background-color: red; color: white; font-size: 18px; padding: 10px; font-weight: bold;")
+        delete_button.clicked.connect(self.delete_account)
+        button_layout.addWidget(delete_button, alignment=QtCore.Qt.AlignRight)
+
+        edit_button = QtWidgets.QPushButton("Редактировать")
+        edit_button.setStyleSheet(
+            "background-color: white; color: black; font-size: 18px; padding: 10px; font-weight: bold;")
+        edit_button.clicked.connect(self.edit_account)
+        button_layout.addWidget(edit_button, alignment=QtCore.Qt.AlignRight)
+
+        self.operation_page = QtWidgets.QLabel("Страница операций")
+        self.right_widget.addWidget(self.operation_page)
+
+        self.db = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="12345678",
+            database="Accounts"
+        )
+        self.cursor = self.db.cursor()
+        self.cursor.execute(
+            "CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, login VARCHAR(255), password VARCHAR(255), email VARCHAR(255), r_code VARCHAR(255))")
+        self.update_login_list()
+        self.update_table()
+
+    def center(self):
+        frame_geometry = self.frameGeometry()
+        screen_center = QtWidgets.QDesktopWidget().availableGeometry().center()
+        frame_geometry.moveCenter(screen_center)
+        self.move(frame_geometry.topLeft())
+
+    def show_home(self):
+        self.right_widget.setCurrentWidget(self.home_page)
+
+    def show_settings(self):
+        self.right_widget.setCurrentWidget(self.settings_page)
+
+    def show_operation(self):
+        self.right_widget.setCurrentWidget(self.operation_page)
+
+    def add_login(self):
+        dialog = QtWidgets.QDialog()
+        dialog.setWindowTitle("Добавить логин")
+        dialog.setStyleSheet("background-color: #1c1c1c;")
+
+        layout = QtWidgets.QFormLayout()
+        dialog.setLayout(layout)
+
+        login_field = QtWidgets.QLineEdit()
+        login_field.setStyleSheet("background-color: #3f3f3f; color: white; font-size: 18px; font-weight: bold;")
+        layout.addRow("Логин:", login_field)
+
+        password_field = QtWidgets.QLineEdit()
+        password_field.setStyleSheet("background-color: #3f3f3f; color: white; font-size: 18px; font-weight: bold;")
+        password_field.setEchoMode(QtWidgets.QLineEdit.Password)
+        layout.addRow("Пароль:", password_field)
+
+        email_field = QtWidgets.QLineEdit()
+        email_field.setStyleSheet("background-color: #3f3f3f; color: white; font-size: 18px; font-weight: bold;")
+        layout.addRow("EMail:", email_field)
+
+        r_code_field = QtWidgets.QLineEdit()
+        r_code_field.setStyleSheet("background-color: #3f3f3f; color: white; font-size: 18px; font-weight: bold;")
+        layout.addRow("R-Code:", r_code_field)
+
+        ok_button = QtWidgets.QPushButton("Ок")
+        ok_button.setStyleSheet(
+            "background-color: white; color: black; font-size: 18px; padding: 10px; border-radius: 10px; font-weight: bold;")
+        ok_button.clicked.connect(
+            lambda: self.add_login_to_db(login_field.text(), password_field.text(), email_field.text(),
+                                         r_code_field.text()))
+        ok_button.clicked.connect(dialog.accept)
+        layout.addWidget(ok_button)
+
+        dialog.exec_()
+
+    def add_login_to_db(self, login, password, email, r_code):
+        query = "INSERT INTO users (login, password, email, r_code) VALUES (%s, %s, %s, %s)"
+        values = (login, password, email, r_code)
+        self.cursor.execute(query, values)
+        self.db.commit()
+
+        self.update_login_list()
+        self.update_table()
+
+    def update_login_list(self):
+        self.login_list.clear()
+
+        query = "SELECT login FROM users"
+        self.cursor.execute(query)
+
+        for login in self.cursor.fetchall():
+            self.login_list.addItem(login[0])
+
+    def update_table(self):
+        self.table.setRowCount(0)
+
+        query = "SELECT login, password, email, r_code FROM users"
+        self.cursor.execute(query)
+
+        for row, data in enumerate(self.cursor.fetchall()):
+            self.table.insertRow(row)
+            for column, value in enumerate(data):
+                item = QtWidgets.QTableWidgetItem(str(value))
+                item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
+                self.table.setItem(row, column, item)
+
+    def delete_account(self):
+        selected_row = self.table.currentRow()
+        if selected_row == -1:
+            return
+
+        login = self.table.item(selected_row, 0).text()
+
+        dialog = QtWidgets.QMessageBox()
+        dialog.setWindowTitle("Удалить аккаунт")
+        dialog.setText(f"Вы уверены, что хотите удалить аккаунт {login}?")
+        dialog.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        dialog.setStyleSheet("background-color: #1c1c1c; color: white; font-size: 18px; font-weight: bold;")
+
+        if dialog.exec_() == QtWidgets.QMessageBox.Yes:
+            query = "DELETE FROM users WHERE login = %s"
+            values = (login,)
+            self.cursor.execute(query, values)
+            self.db.commit()
+
+            self.update_login_list()
+            self.update_table()
+
+    def edit_account(self):
+        selected_row = self.table.currentRow()
+        if selected_row == -1:
+            return
+
+        login = self.table.item(selected_row, 0).text()
+
+        dialog = QtWidgets.QDialog()
+        dialog.setWindowTitle("Редактировать аккаунт")
+        dialog.setStyleSheet("background-color: #1c1c1c;")
+
+        layout = QtWidgets.QFormLayout()
+        dialog.setLayout(layout)
+
+        login_field = QtWidgets.QLineEdit(login)
+        login_field.setStyleSheet("background-color: #3f3f3f; color: white; font-size: 18px; font-weight: bold;")
+        layout.addRow("Логин:", login_field)
+
+        password_field = QtWidgets.QLineEdit(self.table.item(selected_row, 1).text())
+        password_field.setStyleSheet("background-color: #3f3f3f; color: white; font-size: 18px; font-weight: bold;")
+        password_field.setEchoMode(QtWidgets.QLineEdit.Password)
+        layout.addRow("Пароль:", password_field)
+
+        email_field = QtWidgets.QLineEdit(self.table.item(selected_row, 2).text())
+        email_field.setStyleSheet("background-color: #3f3f3f; color: white; font-size: 18px; font-weight: bold;")
+        layout.addRow("EMail:", email_field)
+
+        r_code_field = QtWidgets.QLineEdit(self.table.item(selected_row, 3).text())
+        r_code_field.setStyleSheet("background-color: #3f3f3f; color: white; font-size: 18px; font-weight: bold;")
+        layout.addRow("R-Code:", r_code_field)
+
+        ok_button = QtWidgets.QPushButton("Ок")
+        ok_button.setStyleSheet(
+            "background-color: white; color: black; font-size: 18px; padding: 10px; border-radius: 10px; font-weight: bold;")
+        ok_button.clicked.connect(
+            lambda: self.update_account_in_db(login, login_field.text(), password_field.text(), email_field.text(),
+                                              r_code_field.text()))
+        ok_button.clicked.connect(dialog.accept)
+        layout.addWidget(ok_button)
+
+        dialog.exec_()
+
+    def update_account_in_db(self, old_login, new_login, password, email, r_code):
+        query = "UPDATE users SET login = %s, password = %s, email = %s, r_code = %s WHERE login = %s"
+        values = (new_login, password, email, r_code, old_login)
+        self.cursor.execute(query, values)
+        self.db.commit()
+
+        self.update_login_list()
+        self.update_table()
+
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    window = MainWindow()
+    window.center()
+    window.show()
+    app.exec_()
